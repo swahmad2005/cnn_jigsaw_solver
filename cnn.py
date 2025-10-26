@@ -8,34 +8,30 @@ from torchvision import transforms
 import torch.optim as optim
 from sklearn.metrics import accuracy_score
 
-BORDER_PIXELS = 4 # number of border pixels processed by neural network per image fragment
+BORDER_PIXELS = 8 # number of border pixels processed by neural network per image fragment
 
 transform = transforms.Compose([
-  #transforms.Resize((224, 224))
   transforms.ToTensor(),
-  transforms.Normalize((0.5, 0.5, 0.5), (0.15, 0.15, 0.15)) # ESTIMATE (do real calculation later)
+  transforms.Normalize((0.4152, 0.4650, 0.5014), (0.2298, 0.2304, 0.2357))
 ])
 
 class CNN(nn.Module):
    def __init__(self):
       super().__init__()
-      self.conv1 = nn.Conv2d(3, 16, kernel_size=2, stride=1, padding=1) # 3 input images (one for each RGB color channel), 16 feature maps of same size
+      self.conv1 = nn.Conv2d(3, 16, kernel_size=2, stride=1, padding=1)
       self.relu = nn.ReLU()
-      self.pool = nn.MaxPool2d(2, 2) # halves size of each feature map
-      self.conv2 = nn.Conv2d(16, 32, kernel_size=2, stride=1, padding=1) # 16 input feature maps, 32 output feature maps
-      self.fc1 = nn.Linear(32 * 32 * 2, 1)
-      #self.fc2 = nn.Linear(512, 4)
+      self.pool = nn.MaxPool2d(2, 2)
+      self.conv2 = nn.Conv2d(16, 32, kernel_size=2, stride=1, padding=1)
+      self.fc1 = nn.Linear(32 * 32 * 4, 1)
       self.sigmoid = nn.Sigmoid()
-   
-   def forward(self, x):
-      #print(x.shape)
-      x = self.relu(self.conv1(x))
-      x = self.pool(x)
-      x = self.relu(self.conv2(x))
-      x = self.pool(x)
+
+   def forward(self, x): # fed a 128x16 image
+      x = self.relu(self.conv1(x)) # 16 feature maps
+      x = self.pool(x) # 16x64x8
+      x = self.relu(self.conv2(x)) # 32 feature maps
+      x = self.pool(x) # 32x32x4
       x = x.view(-1) # flatten
-      x = self.sigmoid(self.fc1(x))
-      #x = self.fc1(x)
+      x = self.sigmoid(self.fc1(x)) # 1 output
       return x
 
 model = CNN()
@@ -134,9 +130,6 @@ try:
          loss.backward()
          optimizer.step()
 
-      if index >= 50 - 1: # LIMIT
-         break
-
    total_guesses = 0 # for testing accuracy
    total_correct = 0 # for testing accuracy
 
@@ -213,23 +206,14 @@ try:
          #combined_border.save(f"./training/fail_{index}_{total}.jpg")
          testing_data.append((combined_border, 1))
          total+=1
-      
-      #guesses = 0
-      #correct = 0
+
       # Test
       for img, label in testing_data:
          tensor = transform(img)
          output = round(model(tensor).item())
-         #guesses += 1
          total_guesses += 1
          if label == output:
-            #correct += 1
             total_correct += 1
-
-      #print(f"Accuracy: {correct / guesses} ({correct}/{guesses})")
-
-      if index >= 9: # LIMIT
-         break
    
    print(f"TOTAL ACCURACY: {(100 * total_correct / total_guesses):.2f}% ({total_correct}/{total_guesses})")
 
@@ -243,3 +227,11 @@ print("Done")
 # 1 training image, 10 testing images (5 runs): 63.54%, 59.06%, 57.81%, 55.00%, 61.15%
 # 10 training image, 10 testing images (5 runs): 83.65%, 83.65%, 85.10%, 85.00%, 81.67%
 # 50 training image, 10 testing images (5 runs): 84.90%, 89.39%, 87.92%, 91.56%, 91.46%
+
+# 50 training image, 1500 testing images (3 runs): 89.61%, 90.86%, 91.17%
+# 100 training image, 1500 testing images (5 runs): 94.44%, 96.04%, 94.56%, 95.28%, 96.22%
+# 300 training image, 1500 testing images (5 runs): 94.72%, 93.55%, 94.29%, 94.60%, 93.69%
+
+# 8 border pixel: 97.30%, 96.81%, 96.63%, 97.50%, 95.25%
+# another FC: 97.14%, 96.19%, 94.42%
+# 2 poolings (instead of 3): 97.79%
