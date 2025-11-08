@@ -36,10 +36,13 @@ class CNN(nn.Module):
    def __init__(self):
       super().__init__()
       self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1)
+      #self.bn1 = nn.BatchNorm2d(16)
       self.relu = nn.ReLU()
       self.pool = nn.MaxPool2d(2, 2)
       self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)
+      #self.bn2 = nn.BatchNorm2d(32)
       self.fc1 = nn.Linear(32 * 32 * 4, 1)
+      #self.dropout = nn.Dropout(p=0.2) # dropout of rate 0.35 for fully connected layer
       self.sigmoid = nn.Sigmoid()
 
    def forward(self, x): # fed a 128x16 image
@@ -151,7 +154,8 @@ try:
    test_images = os.listdir(test_path)
 
    # Iterate through train dataset
-   if not os.path.exists("cnn_model.pt"): # allows training to be done once
+   #if not os.path.exists("cnn_model.pt"): # allows training to be done once
+   if True:
       model.train()
       for index, file in enumerate(train_images):
          print(f"Training... ({index + 1}/{len(train_images)})") # display progress info
