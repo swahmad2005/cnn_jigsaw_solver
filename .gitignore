@@ -1,1 +1,9 @@
-cnn_model.pt
+# model
+cnn_trained.pt
+
+# image sets
+sample_images_scrambled/
+sample_images_scrambled_unscrambled/
+sample_images_2/
+sample_images_2_scrambled/
+sample_images_2_scrambled_unscrambled/

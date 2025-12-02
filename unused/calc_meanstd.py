@@ -18,8 +18,8 @@ try:
         mean, std = cv2.meanStdDev(normalized_img) # get mean and std
         sum_means += mean.flatten()
         sum_vars += std.flatten() ** 2
-    print("Means:", sum_means / len(train_images))
-    print("Standard Deviations:", (sum_vars / len(train_images)) ** 0.5)
+    print("Mean:", sum_means / len(train_images))
+    print("Standard Deviation:", (sum_vars / len(train_images)) ** 0.5)
         
 except Exception as e:
    print(f"An error occurred: {e}")

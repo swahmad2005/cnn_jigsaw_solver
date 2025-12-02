@@ -4,16 +4,18 @@ import random
 import torch
 import torch.nn as nn
 from torchvision import transforms
+import torchvision.models as models
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch.optim as optim
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
+USE_PRETRAINED = False
 BORDER_PIXELS = 8 # number of border pixels processed by neural network per image fragment
 
 transform = transforms.Compose([
    transforms.ToTensor(),
-   transforms.Normalize((0.3976, 0.4601, 0.5039), (0.2264, 0.2265, 0.2328)) # !!! PERHAPS PERFORM DYNAMIC CALCULATION?
+   transforms.Normalize((0.3976, 0.4601, 0.5039), (0.2265, 0.2265, 0.2329)) # !!! PERHAPS PERFORM DYNAMIC CALCULATION?
 ])
 
 # Dataset (one created for each image = 96 samples); for processing with DataLoader
@@ -35,14 +37,12 @@ class PuzzleDataset(Dataset):
 class CNN(nn.Module):
    def __init__(self):
       super().__init__()
-      self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1)
-      #self.bn1 = nn.BatchNorm2d(16)
+      self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1)
       self.relu = nn.ReLU()
       self.pool = nn.MaxPool2d(2, 2)
-      self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)
-      #self.bn2 = nn.BatchNorm2d(32)
+      self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1)
       self.fc1 = nn.Linear(32 * 32 * 4, 1)
-      #self.dropout = nn.Dropout(p=0.2) # dropout of rate 0.35 for fully connected layer
+      self.fc1 = nn.Linear(1920, 1)
       self.sigmoid = nn.Sigmoid()
 
    def forward(self, x): # fed a 128x16 image
@@ -53,6 +53,23 @@ class CNN(nn.Module):
       x = x.view(x.size(0), -1) # flatten
       x = self.sigmoid(self.fc1(x)) # 1 output
       return torch.squeeze(x) # return output as 0D tensor
+
+'''
+class ResNet18(nn.Module):
+   def __init__(self):
+      super().__init__()
+      self.model = models.resnet18(weights=None)
+      self.model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+      self.model.maxpool = nn.Identity()
+      #self.model.fc = nn.Linear(self.model.fc.in_features, 1)
+      self.model.fc = nn.Sequential(
+         nn.Linear(self.model.fc.in_features, 1),
+         nn.Sigmoid()
+      )
+   
+   def forward(self, x):
+      return self.model(x)
+'''
 
 # Takes image, returns dataset
 def create_dataset(img):
@@ -144,7 +161,8 @@ def random_nonmatch(idx):
 model = CNN()
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-batch_size = 32
+batch_size = 96
+epochs = 1
 
 train_path = "./dataset/train/" # path to train images
 test_path = "./dataset/test/" # path to test images
@@ -155,25 +173,27 @@ try:
 
    # Iterate through train dataset
    #if not os.path.exists("cnn_model.pt"): # allows training to be done once
-   if True:
+   if USE_PRETRAINED:
       model.train()
-      for index, file in enumerate(train_images):
-         print(f"Training... ({index + 1}/{len(train_images)})") # display progress info
-         
-         dataset = create_dataset(Image.open(train_path + file)) # create dataset of image
-         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+      for epoch in range(epochs):
+         for index, file in enumerate(train_images):
+            print(f"Training... ({epoch * len(train_images) + index + 1}/{len(train_images * epochs)})") # display progress info
+            
+            dataset = create_dataset(Image.open(train_path + file)) # create dataset of image
+            loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-         # Train
-         for images, labels in loader:
-            outputs = model(images)
-            loss = criterion(outputs, labels.float())
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            # Train
+            for images, labels in loader:
+               outputs = model(images).squeeze()
+               #print(outputs, labels)
+               loss = criterion(outputs, labels.float())
+               optimizer.zero_grad()
+               loss.backward()
+               optimizer.step()
 
       torch.save(model, "cnn_model.pt") # save model (so doesn't have to be trained again, if desired)
    else:
-      model = torch.load("cnn_model.pt") # load model already trained before
+      model = torch.load("cnn_pretrained.pt") # load model already trained before
    all_preds, all_labels = [], [] # predictions and correct answers rsp.
 
    # Iterate through test dataset
@@ -187,7 +207,8 @@ try:
       # Test
       with torch.no_grad():
          for images, labels in loader:
-            outputs = torch.round(model(images)).int()
+            outputs = torch.round(model(images).squeeze()).int()
+            #print(outputs, labels)
             all_preds.extend(outputs)
             all_labels.extend(labels)
 
