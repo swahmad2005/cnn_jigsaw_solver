@@ -1,11 +1,4 @@
-# Finds the total differences in all RGB values for pixels along the borders for all image fragments
-# Border with the minimum RGB difference is predicted to be the matching image fragment
-#
-# Does not require training phase (because this is not a neural network, this is a simple algorithm)
-# SERVES AS A BENCHMARK; goal is to use neural networks to enhance border loss calculations to get better results
-#
-# Note: image size always 512x512, image fragment size always 128x128 (16 fragments per image)
-# 960 possible comparisons per image (but 480 unique since each is duplicated)
+# Tests the given pretrained model ('cnn_pretrained.pt') on how many of the main 1500 training images it can unscramble 
 
 import os
 from PIL import Image
@@ -20,7 +13,7 @@ BORDER_PIXELS = 8 # number of border pixels processed by neural network per imag
 
 transform = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Normalize((0.3976, 0.4601, 0.5039), (0.2264, 0.2265, 0.2328)) # !!! PERHAPS PERFORM DYNAMIC CALCULATION?
+    transforms.Normalize((0.3976, 0.4601, 0.5039), (0.2264, 0.2265, 0.2328)) # predetermined
 ])
 
 # CNN
@@ -43,24 +36,6 @@ class CNN(nn.Module):
         x = torch.flatten(x) # flatten
         x = self.sigmoid(self.fc1(x)) # 1 output
         return torch.squeeze(x) # return output as 0D tensor
-    
-# Two borders as inputs (128x3), computes total RGB difference (smaller value = more resemblance)
-def border_loss(b1, b2):
-    diff = 0
-    for i in range(127):
-        #diff += abs(b1[i][0] - b2[i][0]) + abs(b1[i][1] - b2[i][1]) + abs(b1[i][2] - b2[i][2])
-        diff += ((b1[i][0] - b2[i][0]) ** 2 + (b1[i][1] - b2[i][1]) ** 2 + (b1[i][2] - b2[i][2]) ** 2) ** 0.5
-    return diff
-
-# Locates the minimum loss in the predicted borders (identifies the next fragment to be replaced into the puzzle, as this is what the algorithm is the most confident in)
-def min_predicted_loss(list):
-    min_info = (None, None, float('inf')) # tracks minimum loss as tuple: (fragment, side, loss)
-    for fragment in range(16):
-        for side in range(4):
-            if (list[fragment][side][0] < min_info[2]): # new min_loss found
-                min_info = (fragment, side, list[fragment][side][0])
-    list[fragment][side] = (float('inf'), None) # remove the predicted piece as it now has been selected
-    return min_info
 
 # Represents a puzzle fragment and its connections (used to determine whether algorithm successfully reconstructed image)
 class Fragment:
@@ -77,18 +52,7 @@ class Fragment:
     def __str__(self):
         return str(self.id)
 
-# Distributes border losses from a scale of 0 to 1 relatively (lower = more confident; losses that are much lower than other relative losses get lower overall value)
-def confidence_dist(list):
-    sum = 0
-    for n in list: # find sum (exclude infinity)
-        if n != float('inf'):
-            sum += n
-    for i in range(len(list)):
-        list[i] /= sum
-    return list
-
-path = "./dataset/test/" # path to test images
-path = "./sample2/"
+path = "../dataset/test/" # path to test images
 
 accuracies = [] # tracks border comparison accuracies
 images_recreated = 0 # images successfully reconstructed
@@ -98,7 +62,7 @@ model = CNN()
 try:
     entries = os.listdir(path) # retrieve images
 
-    model = torch.load("99.66.pt") # load model already trained before
+    model = torch.load("../cnn_pretrained.pt") # load model already trained before
 
     # Perform tests on each image
     for index, file in enumerate(entries):
@@ -116,7 +80,7 @@ try:
         random.seed(index) # custom seed (so can check later if correct)
         random.shuffle(quadrants)
         
-        # Create CNN inputs (all 960 possible border connections)
+        # Create CNN inputs (all possible border connections)
         outputs = [] # stores all inputs to be fed into CNN
         for f1 in range(16): # iterate through each fragment
             fragment_border = []
@@ -148,7 +112,6 @@ try:
 
         # Attach most resembling fragments (top 24)
         reconstructed_fragments = [Fragment(i, None, None, None, None) for i in range(16)]
-        #min_fragment, min_side, min_loss = None, None, float('inf') # track minimum fragment/side based on minimum loss
         for _ in range(24):
             min_loss = min(outputs) # most resembling border
             min_index = outputs.index(min_loss)
@@ -198,20 +161,22 @@ try:
                 current_fragment = current_fragment.right
             start_fragment = start_fragment.bottom
 
+        # Randomly guess unmatched fragments (model did a poor job already if this is the case)
+        remaining = set(list(range(16))) - set(reconstructed_image)
+        for i in range(16):
+            if reconstructed_image[i] == None:
+                reconstructed_image[i] = remaining.pop()
+
         # Compare reconstructed image with correct image orientation
         random.seed(index)
         random.shuffle(reconstructed_image) # if in correct order, will be equal to [0, 1, 2, ..., 13, 14, 15]
-        print(reconstructed_image)
         if reconstructed_image == list(range(16)): # successful reconstruction
             images_recreated += 1
+        print(reconstructed_image)
+
+    # Display stats
+    print(("\nPUZZLES SUCCESSFULLY RECONSTRUCTED: "), end="")
+    print(f"{images_recreated}/{len(entries)} ({(100 * images_recreated / len(entries)):.3f}%)")
 
 except Exception as e:
     print(f"An error occurred: {e}")
-
-# Display stats
-print("\n==============================\nBORDERS CORRECTLY MATCHED:")
-for correct, count in Counter(accuracies).most_common():
-    print(f"{correct}/48: {count} ({(100 * count / len(entries)):.3f}%)")
-
-print(("\nPUZZLES SUCCESSFULLY RECONSTRUCTED: "), end="")
-print(f"{images_recreated}/{len(entries)} ({(100 * images_recreated / len(entries)):.3f}%)")

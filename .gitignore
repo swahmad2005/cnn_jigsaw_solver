@@ -1,9 +1,11 @@
 # model
 cnn_trained.pt
 
-# image sets
+# scrambled/unscrambled image sets
 sample_images_scrambled/
-sample_images_scrambled_unscrambled/
-sample_images_2/
-sample_images_2_scrambled/
-sample_images_2_scrambled_unscrambled/
+sample_images_unscrambled/
+forest_images_scrambled/
+forest_images_unscrambled/
+
+# cache
+modules/__pycache__/

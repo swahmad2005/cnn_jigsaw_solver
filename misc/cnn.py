@@ -1,3 +1,5 @@
+# Performs training and testing of a CNN back-to-back
+
 import os
 from PIL import Image
 import random
@@ -10,7 +12,6 @@ from torch.utils.data import DataLoader
 import torch.optim as optim
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
-USE_PRETRAINED = False
 BORDER_PIXELS = 8 # number of border pixels processed by neural network per image fragment
 
 transform = transforms.Compose([
@@ -164,36 +165,30 @@ optimizer = optim.Adam(model.parameters(), lr=1e-3)
 batch_size = 96
 epochs = 1
 
-train_path = "./dataset/train/" # path to train images
-test_path = "./dataset/test/" # path to test images
+train_path = "../dataset/train/" # path to train images
+test_path = "../dataset/test/" # path to test images
 
 try:
    train_images = os.listdir(train_path)
    test_images = os.listdir(test_path)
 
    # Iterate through train dataset
-   #if not os.path.exists("cnn_model.pt"): # allows training to be done once
-   if USE_PRETRAINED:
-      model.train()
-      for epoch in range(epochs):
-         for index, file in enumerate(train_images):
-            print(f"Training... ({epoch * len(train_images) + index + 1}/{len(train_images * epochs)})") # display progress info
+   model.train()
+   for epoch in range(epochs):
+      for index, file in enumerate(train_images):
+         print(f"Training... ({epoch * len(train_images) + index + 1}/{len(train_images * epochs)})") # display progress info
             
-            dataset = create_dataset(Image.open(train_path + file)) # create dataset of image
-            loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+         dataset = create_dataset(Image.open(train_path + file)) # create dataset of image
+         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-            # Train
-            for images, labels in loader:
-               outputs = model(images).squeeze()
-               #print(outputs, labels)
-               loss = criterion(outputs, labels.float())
-               optimizer.zero_grad()
-               loss.backward()
-               optimizer.step()
-
-      torch.save(model, "cnn_model.pt") # save model (so doesn't have to be trained again, if desired)
-   else:
-      model = torch.load("cnn_pretrained.pt") # load model already trained before
+         # Train
+         for images, labels in loader:
+            outputs = model(images).squeeze()
+            #print(outputs, labels)
+            loss = criterion(outputs, labels.float())
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
    all_preds, all_labels = [], [] # predictions and correct answers rsp.
 
    # Iterate through test dataset

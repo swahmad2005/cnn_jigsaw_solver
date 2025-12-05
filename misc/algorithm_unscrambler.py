@@ -55,9 +55,7 @@ def confidence_dist(list):
         list[i] /= sum
     return list
 
-path = "./dataset/test/" # path to test images
-
-#limit_images = 0
+path = "../dataset/test/" # path to test images
 
 accuracies = [] # tracks border comparison accuracies
 images_recreated = 0 # images successfully reconstructed
@@ -215,10 +213,6 @@ try:
         random.shuffle(reconstructed_image) # if in correct order, will be equal to permutation
         if reconstructed_image == permutation: # successful reconstruction
             images_recreated += 1
-        
-        #limit_images += 1
-        #if limit_images >= 10:
-            #break
 
 except Exception as e:
     print(f"An error occurred: {e}")

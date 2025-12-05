@@ -15,7 +15,7 @@ unscrambling_image = False
 
 transform = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Normalize((0.3976, 0.4601, 0.5039), (0.2265, 0.2265, 0.2329)) # !!! PERHAPS PERFORM DYNAMIC CALCULATION?
+    transforms.Normalize((0.3976, 0.4601, 0.5039), (0.2265, 0.2265, 0.2329)) # predetermined values from all training images
 ])
 
 # CNN
@@ -31,9 +31,9 @@ class CNN(nn.Module):
 
     def forward(self, x): # feed a 128x16 image
         x = self.relu(self.conv1(x)) # 16 feature maps
-        x = self.pool(x) # 16x63x7
+        x = self.pool(x)
         x = self.relu(self.conv2(x)) # 32 feature maps
-        x = self.pool(x) # 32x30x2
+        x = self.pool(x)
         if not unscrambling_image:
             x = x.view(x.size(0), -1) # flatten with batches (default)
         else:
@@ -56,7 +56,7 @@ class PuzzleDataset(Dataset):
         label = self.labels[idx]
         return sample, label
 
-# Creates a usable dataset (for both training/testing) per image; 96 samples
+# Creates a usable dataset (for both training/testing) per image
 def create_dataset(img):
     # Split image into 16 quadrants
     quadrants = [] # contains all 16 quadrants
@@ -145,54 +145,65 @@ def random_nonmatch(idx):
 
 # Train CNN model
 def train_model():
-    model = CNN()
-    model.train()
-    criterion = nn.MSELoss() # Mean Squared Error loss
-    optimizer = optim.Adam(model.parameters(), lr=1e-3) # Adam optimizer
+    try:
+        model = CNN()
+        model.train()
+        criterion = nn.MSELoss() # Mean Squared Error loss
+        optimizer = optim.Adam(model.parameters(), lr=1e-3) # Adam optimizer
 
-    train_path = "./dataset/train/"
-    train_images = os.listdir(train_path)
+        train_path = "./dataset/train/"
+        train_images = os.listdir(train_path)
 
-    for index, file in enumerate(train_images):
-        print(f"Training... ({index + 1}/{len(train_images)})")
+        for index, file in enumerate(train_images):
+            print(f"Training... ({index + 1}/{len(train_images)})")
+            
+            with Image.open(train_path + file) as img:
+                dataset = create_dataset(img) # create dataset of image
+                loader = DataLoader(dataset, batch_size=96, shuffle=True) # batch contains all samples per image
+
+                # Train
+                for images, labels in loader:
+                    outputs = model(images)
+                    loss = criterion(outputs, labels.float())
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
         
-        dataset = create_dataset(Image.open(train_path + file)) # create dataset of image
-        loader = DataLoader(dataset, batch_size=96, shuffle=True) # batch contains all samples per image
-
-        # Train
-        for images, labels in loader:
-            outputs = model(images)
-            loss = criterion(outputs, labels.float())
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-    
-    torch.save(model, "cnn_trained.pt") # save model to file
+        torch.save(model, "cnn_trained.pt") # save model to file
+        
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 # Test CNN model
 def test_model(model_name):
-    model = CNN()
-    model = torch.load(model_name)
-    model.eval()
+    try:
+        model = CNN()
+        model = torch.load(model_name)
+        model.eval()
 
-    test_path = "./dataset/test/"
-    test_images = os.listdir(test_path)
+        test_path = "./dataset/test/"
+        test_images = os.listdir(test_path)
 
-    all_preds, all_labels = [], [] # predictions and correct answers rsp.
-    for index, file in enumerate(test_images):
-        print(f"Testing... ({index + 1}/{len(test_images)})")
-        
-        dataset = create_dataset(Image.open(test_path + file)) # create dataset of image
-        loader = DataLoader(dataset, batch_size=96) # batch contains all samples per image
+        all_preds, all_labels = [], [] # predictions and correct answers rsp.
+        for index, file in enumerate(test_images):
+            print(f"Testing... ({index + 1}/{len(test_images)})")
+            
+            with Image.open(test_path + file) as img:
+                dataset = create_dataset(img) # create dataset of image
+                loader = DataLoader(dataset, batch_size=96) # batch contains all samples per image
 
-        # Test
-        with torch.no_grad():
-            for images, labels in loader:
-                outputs = torch.round(model(images)).int()
-                all_preds.extend(outputs)
-                all_labels.extend(labels)
+                # Test
+                with torch.no_grad():
+                    for images, labels in loader:
+                        outputs = torch.round(model(images)).int() # prediction is rounded to 0 or 1
+                        all_preds.extend(outputs)
+                        all_labels.extend(labels)
 
-    print(f"\nACCURACY: {accuracy_score(all_labels, all_preds) * 100:.2f}%")
-    print(f"PRECISION: {precision_score(all_labels, all_preds, pos_label=0) * 100:.2f}%")
-    print(f"RECALL: {recall_score(all_labels, all_preds, pos_label=0) * 100:.2f}%")
-    print(f"F1-SCORE: {f1_score(all_labels, all_preds, pos_label=0) * 100:.2f}%")
+        # Show how well the model did
+        print(f"\nACCURACY: {accuracy_score(all_labels, all_preds) * 100:.2f}%")
+        print(f"PRECISION: {precision_score(all_labels, all_preds, pos_label=0) * 100:.2f}%")
+        print(f"RECALL: {recall_score(all_labels, all_preds, pos_label=0) * 100:.2f}%")
+        print(f"F1-SCORE: {f1_score(all_labels, all_preds, pos_label=0) * 100:.2f}%")
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")

@@ -1,8 +1,10 @@
+# Calculates mean and standard deviation of an entire folder of images (this was used on the training dataset)
+
 import os
 import cv2
 import numpy as np
 
-train_path = "./dataset/train/" # path to train images
+train_path = "../dataset/train/" # path to train images
 
 sum_means = (0, 0, 0)
 sum_vars = (0, 0, 0)

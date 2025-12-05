@@ -26,29 +26,14 @@ def main():
         cnn_model.test_model(model_name)
         print()
 
-    # Scramble an image set
-    user_input = input("Would you like to scramble a new set of images to test the CNN on? (y/n): ")
-    if (user_input.lower() == "y"):
-        images = input("Please enter the name of the directory containing these images (e.g. \"sample_images\"): ")
-        print()
-        scramble_images.scramble(images)
-        print()
-    
-    # Unscramble an image set
-    user_input = input("Would you like to unscramble a set of images with the CNN? (y/n): ")
-    if (user_input.lower() == "y"):
-        images = input("Please enter the name of the directory containing these images (e.g. \"sample_images_scrambled\"): ")
-        print()
-        unscramble_images.unscramble(images, model_name)
-        print()
-    
-    # Test accuracy of unscrambled images
-    user_input = input("Would you like to estimate the accuracy of the CNN's unscrambled images? (y/n): ")
-    if (user_input.lower() == "y"):
-        images = input("Please enter the name of the original directory containing these images, WITHOUT the suffix (e.g. \"sample_images\"; \"sample_images_scrambled_unscrambled\" would need to be present): ")
-        print()
-        test_accuracy.compare(images)
-        print()
+    # Scramble/unscramble an image set
+    images = input("UNSCRAMBLE TEST - Enter the name of a directory containing images (e.g. \"sample_images\"): ")
+    scramble_images.scramble(images) # created scrambled directory of images
+    print()
+    unscramble_images.unscramble(images, model_name) # unscramble the scrambled directory of images
+    print()
+    test_accuracy.compare(images) # check how many images the CNN successfully unscrambled
+    print()
 
 if __name__ == "__main__":
     main()
