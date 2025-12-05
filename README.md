@@ -1,6 +1,8 @@
 ## Getting Started  
 First, clone the repository and import the Conda environment (ensure that you have Conda installed): `conda env create -f environment.yml`
 
+Activate the Conda environment: `conda activate cnn_jigsaw_solver`
+
 The file 'main.py' provides all of the needed functionality. Simply run this program: `python main.py`
 
 ## Steps of 'main.py'
@@ -18,3 +20,4 @@ The 'misc/' folder contains files that are no longer necessary (they were used i
 - '**calc_meanstd.py**': Calculates the mean and standard deviation of a directory of images (specifically, of the training dataset).
 - '**cnn.py**': Performs training and testing of a CNN in one go.
 - '**cnn_unscrambler.py**': Attempts to scramble/unscramble all 1500 images of the testing dataset using the pretrained CNN ('cnn_pretrained.pt' in the home directory) and measures the accuracy. Does this without creating any new directories.
+
