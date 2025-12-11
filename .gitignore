@@ -6,6 +6,8 @@ sample_images_scrambled/
 sample_images_unscrambled/
 forest_images_scrambled/
 forest_images_unscrambled/
+dataset/test_scrambled/
+dataset/test_unscrambled/
 
 # cache
 modules/__pycache__/

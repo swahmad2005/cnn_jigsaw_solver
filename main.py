@@ -1,10 +1,6 @@
 from modules import cnn_model, scramble_images, unscramble_images, test_accuracy
 CNN = cnn_model.CNN # must redefine CNN class (bug)?
 
-def invalid_input():
-    print("ERROR: invalid input")
-    exit(1) # exit program due to invalid input
-
 def main():
     print("-----------------\nCNN JIGSAW SOLVER\n-----------------")
 
